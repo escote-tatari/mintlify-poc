@@ -14,9 +14,11 @@
         "group": "Getting Started",
         "pages": [
           "index",
-          "quickstart"
+          "quickstart",
+          "component-showcase"
         ]
       },
+      "some-new-page",
       {
         "group": "API Docs",
         "pages": [
