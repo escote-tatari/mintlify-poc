@@ -1,0 +1,227 @@
+---
+title: "EASE Challenger Plan"
+description: "Product requirements: replace the challenger slot in the weekly TVP feed to Upstream with EASE, and start a one-month soak on 2026-10-09."
+icon: "flask"
+---
+
+<Info>
+  **Status as of 2026-10-08.** Product requirements page, companion to the tech spec. Jira epic: MINT-5157.
+</Info>
+
+The weekly TVP feed to Upstream, a streaming mediation partner, has a challenger slot that today holds a copy of production. This proposal puts **EASE** in that slot: a closed-form model with no GPU and no training loop.
+
+<Check>
+  **Start the EASE soak on Friday.** Switch on the challenger on 2026-10-09, soak for at least one month, and decide in mid-November.
+</Check>
+
+## Key figures
+
+<CardGroup cols={3}>
+  <Card title="+0.113" icon="chart-line">
+    Main metric (7-day view-through response rate), EASE with boost (c = 4) vs. production on holdout. About 12% better. 95% CI [+0.069, +0.151].
+  </Card>
+  <Card title="+0.139" icon="bullseye">
+    Incremental response rate, same test. 95% CI [+0.081, +0.199].
+  </Card>
+  <Card title="3 vs. 15" icon="arrow-down-up-across-line">
+    Companies out of 76 ranked backwards on incremental lift: EASE 3, production 15.
+  </Card>
+  <Card title="c = 4" icon="sliders">
+    Soak config, chosen by a rule written before the holdout test.
+  </Card>
+  <Card title="+$10/week" icon="dollar-sign">
+    Added cost, about $43/month. No GPU.
+  </Card>
+</CardGroup>
+
+## Contents
+
+| Section | Covers |
+|---|---|
+| [How we measure](#how-we-measure) | Definitions |
+| [Why it will be good](#why-it-will-be-good) | Results |
+| [How we do it](#how-we-do-it) | Implementation and rollout |
+| [How we decide](#how-we-decide) | Promotion and rejection rules |
+| [Open questions](#open-questions) | |
+| [Risks](#risks) | |
+| [How EASE works](#appendix-how-ease-works) | Appendix |
+
+## How we measure
+
+<AccordionGroup>
+  <Accordion title="Three slots per company" defaultOpen>
+    Production gets the production score, challenger gets EASE, and control gets a random score for measuring lift. The planned split is 70/15/15, but it is currently 4:1:1 because of an Upstream bug.
+  </Accordion>
+  <Accordion title="Offline test">
+    Train on visits up to a cutoff, then check predictions against the next four weeks of real impressions.
+  </Accordion>
+  <Accordion title="Metrics">
+    - **View-through response rate** (main)
+    - **Conversion rate**
+    - **Incremental response rate** (only visits the measurement credits to the ad)
+  </Accordion>
+  <Accordion title="Comparison">
+    Per company, log(EASE metric / production metric) on top-ranked households, averaged across companies, with bootstrap CIs over companies.
+  </Accordion>
+  <Accordion title="Holdout discipline">
+    Tune only on July and August 2026. The holdout (2026-08-30 to 2026-09-27) is graded once, for at most two candidates.
+  </Accordion>
+</AccordionGroup>
+
+## Why it will be good
+
+### 1. Holdout results
+
+Two boost sizes were tested once each. Each cell is the log-ratio vs. production, with the 95% CI and the number of companies where EASE won.
+
+| Metric | EASE without boost | EASE with boost, c = 4 |
+|---|---|---|
+| View-through, 7 days (main) | +0.035 [-0.005, +0.075], 55 of 86 | **+0.113** [+0.069, +0.151], 75 of 86 |
+| View-through, 1 day | +0.049 [+0.006, +0.093], 49 of 86 | **+0.101** [+0.054, +0.145], 70 of 86 |
+| Incremental response | +0.101 [+0.021, +0.178], 51 of 76 | **+0.139** [+0.081, +0.199], 61 of 76 |
+| View-through conversion, 7 days | -0.110 [-0.209, -0.012], 31 of 80 | +0.053 [-0.020, +0.125], 45 of 75 |
+| Incremental conversion | +0.052 [-0.047, +0.153], 42 of 68 | +0.021 [-0.087, +0.115], 46 of 68 |
+
+- c = 8 matched c = 4 on view-through and trailed slightly on incremental response.
+- Conversions are closed to a small lead, but the CI includes zero.
+
+<Note>
+  The no-boost column comes from a regrade with newer grading code, so the c = 4 vs. no-boost gain carries extra noise.
+</Note>
+
+### 2. Backwards ranking
+
+For a fifth to a quarter of companies, production ranks its least responsive households highest on incremental lift.
+
+| Window | Production | EASE |
+|---|---|---|
+| Tuning | 19 of 74 (26%) | 2 of 74 |
+| Holdout | 15 of 76 (20%) | 3 of 76 |
+
+### 3. Cause of the conversion gap
+
+A "lapsed visitor" visited a company more than 90 days ago but not since. These convert well. Production ranks them high because a past visit raises its score. EASE ignores a household's own past visits when scoring that company.
+
+Share of lapsed visitors in the top tenth:
+
+| Production | EASE today | EASE with boost, c = infinity |
+|---|---|---|
+| 44.5% | 14.0% | 47.1% |
+
+### 4. The visited boost
+
+```text
+score = EASE score + c × (company's largest EASE weight) × (visit weight, halving every 2 months)
+```
+
+- Any c ≥ 2 lifts the main metric to about +0.10 on average (July / August tuning), versus about 0 without it.
+- c = 4 was the soak choice. c = infinity was dropped before the holdout because c = 4 matched c = 8 on the main metric and kept more incremental gain.
+
+### 5. Simplicity and cost
+
+EASE needs one matrix inverse over about 640 companies. A weekly run takes about 28 minutes on 10 CPU workers.
+
+| | Cost per run |
+|---|---|
+| Production (GPU training plus scoring) | about $17.39 |
+| EASE (added) | about \$9.99 (range \$8.70 to \$11.31) |
+
+## How we do it
+
+A single reviewed constant, `TVP_CHALLENGER_MODEL = 'ease'`, creates a separate Airflow DAG for the challenger, reusing production's scoring step.
+
+<Tip>
+  **Protections for production:** separate pipeline (no waiting behind production runs); one-hour timeout, then fall back to production's score; column check with fallback; old challenger tables deleted after each run; MLflow tracking without model registration.
+</Tip>
+
+### Plan status
+
+<Steps>
+  <Step title="Ship the code: Done">
+    ml-affinity v0.206.12.
+  </Step>
+  <Step title="Make the soak safe: Staging run in progress">
+    Done: unscored companies get production's score; boost released in v0.206.14. In progress: a staging run, which needs a staging GPU machine. Retries run until 04:40 UTC on 2026-10-09; otherwise the first production run is checked by hand.
+  </Step>
+  <Step title="Soak: Next">
+    Switch on, release, and unpause on 2026-10-09 for at least one calendar month. Seungyeob and Tommy run it while Brad is out from 2026-10-12.
+  </Step>
+  <Step title="Promote or reject: Later, mid-November">
+    Prerequisites: fill in companies with little history, a daily run with a Self-Serve segment check, and EASE allowed in the production slot.
+  </Step>
+</Steps>
+
+**Weekly checks**
+
+- The challenger ran.
+- The wait step found its table.
+- The feed shows different production and challenger scores.
+- The share of backwards-ranked companies.
+- The list of unscored companies.
+
+## How we decide
+
+**Lift** per company = (7-day view-through visits per impression in a slot) / (same in control) − 1.
+
+The statistic is the median across companies of lift(challenger) − lift(production), in percentage points, computed for view-through and incremental lift. Only companies with at least 5,000 impressions in all three slots count.
+
+<CardGroup cols={2}>
+  <Card title="Promote" icon="circle-check">
+    Either metric's gain is established (CI above zero) and neither shows an established loss. Incremental gain alone is enough, but a promotion based on it alone is confirmed in a second soak.
+  </Card>
+  <Card title="Reject" icon="circle-xmark">
+    Neither metric shows an established gain by the end, or either shows an established loss.
+  </Card>
+</CardGroup>
+
+- The +3 point view-through target is the smallest gain a one-month soak can establish at about 50 companies (±2.6 points). Incremental lift is noisier (±8 points), so it has no numeric target.
+- The challenger gets one-sixth of traffic. A 1.4-point loss would lower a client's overall result by about 0.2 points, which is why the soak is cheap to start.
+- Unscored companies are excluded from the read-out. The list is fixed weekly before results are seen.
+
+## Open questions
+
+| Question | Status |
+|---|---|
+| Does the soak start with the visited boost? | **Answered:** yes, c = 4 |
+| Who signs off the weekly unscored-companies list? | **Open** |
+| Build the visit graph by day instead of by month, for both models (see the linked tech spec) | Future work |
+
+## Risks
+
+<AccordionGroup>
+  <Accordion title="Conversions">
+    EASE without the boost trails; with it, the holdout lead is +0.053 but the CI includes zero. The soak measures it.
+  </Accordion>
+  <Accordion title="Unscored companies (fixed)">
+    They get production's score in the challenger slot.
+  </Accordion>
+  <Accordion title="Staging GPU">
+    Scarce. If unavailable, the wait step and fallbacks are only unit-tested. Every failure serves production's score, and rollback is one constant.
+  </Accordion>
+  <Accordion title="Slot split">
+    The 4:1:1 split will move toward 70/15/15 during the soak, so results will be read in two parts.
+  </Accordion>
+  <Accordion title="Noise band">
+    The ±2.6 point band was measured under the old split and will be re-measured on October data.
+  </Accordion>
+</AccordionGroup>
+
+## Appendix: How EASE works
+
+EASE (Steck, 2019) learns a company-by-company weight matrix B that reconstructs each household's companies from its other companies, so B's diagonal is zero. It comes from one matrix inverse:
+
+```text
+P = (XᵀX + λI)⁻¹
+B[i][j] = −P[i][j] / P[j][j],  B[j][j] = 0
+score = u · B
+```
+
+- Production uses a 12-month user vector, weighting each visit by 0.5^(age/2) with age in months. A one-month window left 41% of households with no visits, all tied at the same score.
+- Production uses λ = 250 on real counts. The original page's toy example uses a smaller scale.
+- Because the diagonal of B is zero, EASE scores already-visited companies only from other companies, which is why it ranks lapsed visitors low and why the boost is needed.
+
+<Note>
+  The original page includes an interactive toy for EASE; it is not reproduced here.
+</Note>
+
+**Links:** the tech spec, the PRD "Beat the Production Affinity Model," and Jira epic MINT-5157.
