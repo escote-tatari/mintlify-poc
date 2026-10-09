@@ -133,9 +133,9 @@ Read any cell as a sentence: the plugin is the **noun** (the artifact), the skil
 | Verb | Means, on every noun | `prd` | `spec` | `pr` |
 | --- | --- | --- | --- | --- |
 | `create` | draft from inputs through a gated pipeline | ✅ | ✅ | ✅ |
-| `review [advocate ...]` | findings from one or more advocates, no number | ✅ | ✅ | ✅ |
-| `score` | rubric grade from review evidence, ending in a readiness line | ✅ | ✅ | ✅ risk tier |
-| `revise` | update the artifact in place from findings | ✅ | ✅ | ✅ PR body |
+| `review` | findings from one or more named advocates, no number | ✅ | ✅ | ✅ |
+| `score` | rubric grade from review evidence, ending in a readiness line (on `pr`: the risk tier) | ✅ | ✅ | ✅ |
+| `revise` | update the artifact in place from findings (on `pr`: the body) | ✅ | ✅ | ✅ |
 | `lint` | mechanical checks | ✅ |  |  |
 
 Where each skill comes from (`/spec:score` was `tech-spec-review`, `/prd:score` starts from the [PRD Readiness Checker](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/), and so on) is in [APIs and interface changes](#apis-and-interface-changes).
