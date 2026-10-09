@@ -55,12 +55,19 @@ Writing code got faster. The work around it did not. This spec covers **how** we
 
 ### The problem in four numbers
 
-Each bar is the share of a measured sample where the process failed the reader: 5 of 20, 6 of 25, 231 of 251, 634 of 634. Sources are in the tabs below.
+Each bar is the share of a measured sample where the process failed the reader. Sources are in the tabs below.
+
+| Bar | What failed | Count |
+| --- | --- | --- |
+| PRD reviews | reviewers got under 48 hours to read | 5 of 20 |
+| Slipping epics | cause named as the spec or requirements | 6 of 25 |
+| Tech specs | no recorded approver | 231 of 251 |
+| PR bodies | Claude-attributed bodies missing at least one of five reviewer sections | 634 of 634 |
 
 ```mermaid
 xychart-beta
     title "Where the process fails today (% of sample)"
-    x-axis ["PRD reviews, under 48h to read", "Slipping epics, spec cause", "Tech specs, no approver", "Claude PR bodies, incomplete"]
+    x-axis ["PRD reviews", "Slipping epics", "Tech specs", "PR bodies"]
     y-axis "Share of sample (%)" 0 --> 100
     bar [25, 24, 92, 100]
 ```
@@ -125,11 +132,13 @@ Read any cell as a sentence: the plugin is the **noun** (the artifact), the skil
 
 | Verb | Means, on every noun | `prd` | `spec` | `pr` |
 | --- | --- | --- | --- | --- |
-| `create` | draft the artifact from inputs through a gated pipeline | `/prd:create` (from `create-prd`) | `/spec:create` (from `tech-plan`) | `/pr:create` |
-| `review [advocate ...]` | findings from one or more advocates, no number | `/prd:review` | `/spec:review` | `/pr:review` (was `review-pr`) |
-| `score` | the rubric grade, using review findings as evidence, ending in a readiness line | `/prd:score` ([PRD Readiness Checker](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/)) | `/spec:score` (was `tech-spec-review`) | `/pr:score` (risk tier) |
-| `revise` | update the artifact in place from findings | `/prd:revise` | `/spec:revise` | `/pr:revise` (replace an open PR's body) |
-| `lint` | mechanical checks | `/prd:lint` (from `prd-citation-enforcer`) |  |  |
+| `create` | draft from inputs through a gated pipeline | ✅ | ✅ | ✅ |
+| `review [advocate ...]` | findings from one or more advocates, no number | ✅ | ✅ | ✅ |
+| `score` | rubric grade from review evidence, ending in a readiness line | ✅ | ✅ | ✅ risk tier |
+| `revise` | update the artifact in place from findings | ✅ | ✅ | ✅ PR body |
+| `lint` | mechanical checks | ✅ |  |  |
+
+Where each skill comes from (`/spec:score` was `tech-spec-review`, `/prd:score` starts from the [PRD Readiness Checker](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/), and so on) is in [APIs and interface changes](#apis-and-interface-changes).
 
 <Note>
   The table is a **floor, not a ceiling** ([CONTRIBUTING: Same verb, same meaning](https://github.com/tatari-tv/tatari-skills/blob/main/CONTRIBUTING.md#same-verb-same-meaning), merged 2026-10-08 in [#503](https://github.com/tatari-tv/tatari-skills/pull/503)). A plugin adds a verb when it earns its place, and a verb joins the table once a second noun needs it.
@@ -264,12 +273,12 @@ The end state is the verb table above. Getting there is a sequence of states, ea
 
 ```mermaid
 flowchart LR
-    S0["<b>S0</b><br/>today"] --> S1["<b>S1</b><br/>verb contract<br/>first renames"]
-    S1 --> S2["<b>S2</b><br/>/spec:score<br/>/plugin:*"]
-    S2 --> S3["<b>S3</b><br/>panel ships<br/>advocates live"]
-    S3 --> S4["<b>S4</b><br/>prd + spec:create<br/>out of conductor"]
-    S4 --> S5["<b>S5</b><br/>/pr:create, guard,<br/>routing, watch"]
-    S5 --> S6["<b>S6</b><br/>tombstones,<br/>evals required"]
+    S0["<b>S0</b><br/>today"] --> S1["<b>S1</b><br/>contract"]
+    S1 --> S2["<b>S2</b><br/>renames"]
+    S2 --> S3["<b>S3</b><br/>panel"]
+    S3 --> S4["<b>S4</b><br/>prd, spec"]
+    S4 --> S5["<b>S5</b><br/>pr"]
+    S5 --> S6["<b>S6</b><br/>cleanup"]
     classDef done fill:#dcfce7,stroke:#15803d,color:#14532d
     classDef now fill:#fef3c7,stroke:#b45309,color:#78350f
     class S0,S1 done
@@ -306,23 +315,15 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    MKT["marketplace.json<br/>audience + needs on every entry, linted"]
-    subgraph R1["Ring 1 · Development"]
-        direction TB
-        PRD["<b>prd</b><br/>create · lint<br/>review* · score* · revise*"]
-        SPEC["<b>spec</b><br/>create<br/>review* · score* · revise*"]
-        PANEL["<b>panel</b><br/>advocate registry<br/>grader ensemble · reviser"]
-        PR["<b>pr</b><br/>create · revise · review · score<br/>explain · debug · commit · watch"]
-        GUARD["guard hook<br/>(or managed settings)"]
-    end
-    PRD -- depends --> PANEL
-    SPEC -- depends --> PANEL
-    PR -. "advocates from registry" .-> PANEL
-    GUARD -- "model's PR creation" --> PR
+    PRD["<b>prd</b><br/>create · lint<br/>review* · score* · revise*"] -- depends --> PANEL
+    SPEC["<b>spec</b><br/>create<br/>review* · score* · revise*"] -- depends --> PANEL
+    PANEL["<b>panel</b><br/>advocate registry<br/>grader ensemble · reviser"]
+    GUARD["guard hook<br/>(or managed settings)"] -- "model's PR creation" --> PR
+    PR["<b>pr</b><br/>create · revise · review · score<br/>explain · debug · commit · watch"] -. "advocates" .-> PANEL
     PR -- "body contract" --> ORG["org contract check<br/>at merge"]
     PR -- "risk tier" --> ROUTE["reviewer routing<br/>(SEC-3101 permitting)"]
-    COND["conductor<br/>MOVED stubs at old paths"] -- depends --> PRD & SPEC & PR
-    MKT --> R1
+    classDef engine fill:#e0f2fe,stroke:#0369a1,color:#0c4a6e
+    class PANEL engine
 ```
 
 <Note>
@@ -419,26 +420,26 @@ No database. Four schemas change.
   <Tab title="PR" icon="code-pull-request">
     ```mermaid
     sequenceDiagram
-    autonumber
-    actor A as Author + Claude
-    participant C as /pr:create
-    participant GH as GitHub
-    participant S as /pr:score
-    participant O as Org contract check
-    A->>C: gather, interview, split?, regroup?
-    C->>GH: open PR (five-section body + tier @ SHA)
-    A->>GH: push new commits
-    GH-->>S: tier now stale
-    S->>S: fresh /pr:review findings
-    S->>GH: new tier, route reviewers
-    GH->>O: merge attempt
-    alt body fails the contract
-        O-->>A: blocked
-        A->>C: /pr:revise, then re-run
-    else body passes
-        O-->>GH: merge allowed (human approval still required)
-    end
-    Note over A,GH: /pr:watch follows CI and threads until merge
+autonumber
+actor A as Author + Claude
+participant C as /pr:create
+participant GH as GitHub
+participant S as /pr:score
+participant O as Org contract check
+A->>C: gather, interview, split?, regroup?
+C->>GH: open PR (five-section body + tier @ SHA)
+A->>GH: push new commits
+GH-->>S: tier now stale
+S->>S: fresh /pr:review findings
+S->>GH: new tier, route reviewers
+GH->>O: merge attempt
+alt body fails the contract
+O-->>A: blocked
+A->>C: /pr:revise, then re-run
+else body passes
+O-->>GH: merge allowed (human approval still required)
+end
+Note over A,GH: /pr:watch follows CI and threads until merge
     ```
   </Tab>
 </Tabs>
@@ -683,7 +684,7 @@ N/A. No AWS resources. GitHub Actions minutes for the org contract check are siz
 ## Execution plan
 
 ```mermaid
-flowchart LR
+flowchart TB
     P1["<b>1</b> Verb + advocate<br/>contract"] --> P2["<b>2</b> Audience field,<br/>renames + stubs"]
     P2 --> P3["<b>3</b> panel,<br/>/prd:review, /spec:review"]
     P3 --> P4["<b>4</b> prd plugin,<br/>/spec:create, /prd:score"]
