@@ -55,14 +55,14 @@ Writing code got faster. The work around it did not. This spec covers **how** we
 
 ### The problem in four numbers
 
-Each bar is the share of a measured sample where the process failed the reader. Sources are in the tabs below.
+Each bar is the share of a measured sample where the process failed the reader. The counts are as each source reports them. The percentages, and the flip on the last two rows so every bar reads "higher is worse", are this spec's arithmetic.
 
-| Bar | What failed | Count |
-| --- | --- | --- |
-| PRD reviews | reviewers got under 48 hours to read | 5 of 20 |
-| Slipping epics | cause named as the spec or requirements | 6 of 25 |
-| Tech specs | no recorded approver | 231 of 251 |
-| PR bodies | Claude-attributed bodies missing at least one of five reviewer sections | 634 of 634 |
+| Bar | As the source reports it | Charted as | Source | Window |
+| --- | --- | --- | --- | --- |
+| PRD reviews | 5 of the 20 most recent PRD reviews gave reviewers under 48 hours to read | 5 of 20 = 25% | [PRD Review Lead-Time Audit](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2694119437/PRD+Review+Lead-Time+Audit+Sep+18+2026) (TPM) | Jul 30 to Sep 18 2026 |
+| Slipping epics | 6 of 25 slipping roadmap epics name the spec or requirements as the cause | 6 of 25 = 24% | [SoS Pre-Meeting Summary](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2671476841/SoS+Pre-Meeting+Summary+Sep+4+2026) (TPM); causes are LLM-inferred | one week, to 2026-09-04 |
+| Tech specs | 20 of 251 tech specs record who approved them | 231 of 251 with no approver = 92% | [Tech Specs: What Changed](https://marquee.internal.tatari.dev/p/eng/tech-specs-what-changed/) | as of 2026-09-10 |
+| PR bodies | 0 of 634 Claude-attributed PR bodies carried all five reviewer sections | 634 of 634 missing one or more = 100% | measurement in the `/pr:create` tech spec (not yet published); see the [`/pr:create` design](https://marquee.internal.tatari.dev/p/~scott-idler/pr-create-skill-hook-and-fleet-delivery/) | September 2026, measured 2026-09-30 |
 
 ```mermaid
 xychart-beta
@@ -78,7 +78,8 @@ xychart-beta
 
     - **5 of 20** most recent PRD reviews gave reviewers less than 48 hours to read ([PRD Review Lead-Time Audit](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2694119437/PRD+Review+Lead-Time+Audit+Sep+18+2026), Jul 30 to Sep 18 2026).
     - **5 of 7** H1 2026 design retros: _"When we bypass design and go straight to PRD review, a lot of issues get aired too late."_ ([Design Retro Recurring Themes 2025–2026](https://tatari.atlassian.net/wiki/spaces/PD/pages/2714206349/Design+Retro+Recurring+Themes+2025+2026))
-    - **Cause:** gaps surface in the review meeting, not before it. Nothing grades a PRD's readiness before invites go out.
+    - **Cause:** gaps surface in the review meeting, not before it.
+    - **What already exists:** the n8n PRD Readiness Auditor checks every in-flight PRD for readiness before its PRD review meeting is scheduled. It scores each PRD against a 100-point rubric and a gold-standard PRD ([scoring prompt](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/)) and publishes a weekly [PRD Readiness Review](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2715713538/PRD+Readiness+Review+-+2026-10-02+1331) in the TPM space: 32 PRDs reviewed on 2026-10-02, 20 non-compliant. `/prd:score` brings that same rubric into the author's session while the PRD is being written.
   </Tab>
   <Tab title="2. Specs" icon="compass-drafting">
     **The how gets settled late, and approval is invisible.**
@@ -114,7 +115,11 @@ xychart-beta
     bar [142, 9, 8]
 ```
 
-`pr` had 9 users and 251 invocations; `spec` had 8 users and 30 invocations. 142 people used Claude Code that month ([telemetry PRD](https://marquee.internal.tatari.dev/p/~scott-idler/prd-claude-code-telemetry/)).
+| Bar | People (distinct users) | Skill runs | Source | Window |
+| --- | --- | --- | --- | --- |
+| Claude Code (all) | 142 | n/a | Anthropic Analytics API, as reported in the [telemetry PRD](https://marquee.internal.tatari.dev/p/~scott-idler/prd-claude-code-telemetry/) | 30 days to 2026-09-23 |
+| `pr` plugin | 9 | 251 | same | same |
+| `spec` plugin | 8 | 30 | same | same |
 
 <Warning>
   **Cost of doing nothing.** PRDs keep failing in the meeting, specs keep settling late, and reviewers keep reconstructing intent from diffs. The skills that exist stay installed by a handful of people.
@@ -138,7 +143,7 @@ Read any cell as a sentence: the plugin is the **noun** (the artifact), the skil
 | `revise` | update the artifact in place from findings (on `pr`: the body) | ✅ | ✅ | ✅ |
 | `lint` | mechanical checks | ✅ |  |  |
 
-Where each skill comes from (`/spec:score` was `tech-spec-review`, `/prd:score` starts from the [PRD Readiness Checker](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/), and so on) is in [APIs and interface changes](#apis-and-interface-changes).
+Where each skill comes from (`/spec:score` was `tech-spec-review`, `/prd:score` starts from the n8n PRD Readiness Auditor's [scoring prompt](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/), and so on) is in [APIs and interface changes](#apis-and-interface-changes).
 
 <Note>
   The table is a **floor, not a ceiling** ([CONTRIBUTING: Same verb, same meaning](https://github.com/tatari-tv/tatari-skills/blob/main/CONTRIBUTING.md#same-verb-same-meaning), merged 2026-10-08 in [#503](https://github.com/tatari-tv/tatari-skills/pull/503)). A plugin adds a verb when it earns its place, and a verb joins the table once a second noun needs it.
@@ -243,7 +248,7 @@ Each goal comes with the assert that proves it (asserted 2026-10-06, or at the d
   <Card title="Assumptions" icon="lightbulb">
     - Product and Data Science use Claude Code for PRDs and specs; ring 1 was widened to Development for that reason (Rings, 2026-10-02).
     - `panel` can be seeded from [spec-lab](https://github.com/tatari-tv/spec-lab) and `tech-spec-review`'s ensemble; spec-lab's author agrees the seeding (Phase 3 acceptance).
-    - The [PRD Readiness Checker](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/)'s 100-point rubric is the PRD review prompt Product shared; Phase 4's first step confirms the source with its author.
+    - `/prd:score` uses the same 100-point rubric and gold-standard PRD as the n8n PRD Readiness Auditor ([scoring prompt](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/), [weekly report](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2715713538/PRD+Readiness+Review+-+2026-10-02+1331)), so a PM's score while drafting matches the weekly audit's. Phase 4 agrees with the auditor's owner how the two share one copy of the prompt.
     - Plugin [`dependencies`](https://code.claude.com/docs/en/plugins-reference) auto-install `panel` on the current CLI (Phase 3 verifies).
   </Card>
 
@@ -460,7 +465,7 @@ From CONTRIBUTING; these describe S3 onward.
     Doc revision or PR head SHA must match. An incomplete review counts as none.
   </Step>
   <Step title="No total">
-    `/spec:score` reports eight independent per-criterion scores and the readiness line, never a sum, average, letter grade or "X/100" ([no-total decision](https://github.com/tatari-tv/tatari-skills/blob/main/docs/design/2026-09-27-tech-spec-review-v1-fix.md); [`references/rules.md`](https://github.com/tatari-tv/tatari-skills/blob/main/plugins/spec/skills/tech-spec-review/references/rules.md); enforced by [`scripts/check_report.py`](https://github.com/tatari-tv/tatari-skills/blob/main/plugins/spec/skills/tech-spec-review/scripts/check_report.py)). The readiness line is the answer to "is it ready". Whether `/prd:score` keeps the Readiness Checker's 100-point total is decided in Phase 4.
+    `/spec:score` reports eight independent per-criterion scores and the readiness line, never a sum, average, letter grade or "X/100" ([no-total decision](https://github.com/tatari-tv/tatari-skills/blob/main/docs/design/2026-09-27-tech-spec-review-v1-fix.md); [`references/rules.md`](https://github.com/tatari-tv/tatari-skills/blob/main/plugins/spec/skills/tech-spec-review/references/rules.md); enforced by [`scripts/check_report.py`](https://github.com/tatari-tv/tatari-skills/blob/main/plugins/spec/skills/tech-spec-review/scripts/check_report.py)). The readiness line is the answer to "is it ready". Whether `/prd:score` keeps the n8n auditor's 100-point total is decided in Phase 4.
   </Step>
 </Steps>
 
@@ -499,7 +504,7 @@ The interface is the skill invocations. New and renamed:
 | --- | --- | --- |
 | `/prd:create`, `/prd:lint` | 4 | conductor `create-prd`, `prd-citation-enforcer` |
 | `/prd:review [advocate ...]`, `/spec:review [advocate ...]` | 3 | conductor `skeptical-prd-reviewer`, `spec-review` (now advocates) |
-| `/prd:score` | 4 | [PRD Readiness Checker](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/) |
+| `/prd:score` | 4 | n8n PRD Readiness Auditor's [scoring prompt](https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/) |
 | `/spec:create` | 4 | conductor `tech-plan` |
 | `/spec:score` | 2 | `/spec:tech-spec-review` |
 | `/pr:create`, `/pr:revise` | 5 | conductor `pr` (seed) |
@@ -588,7 +593,7 @@ None. Claude Code plugins, hooks, managed settings, GitHub rulesets and the exis
 | --- | --- | --- |
 | Users and invocations of `prd`, `spec`, `pr`, `panel` per week | `pr` 9 users / 251; `spec` 8 / 30 (30 days to 2026-09-23) | [telemetry PRD](https://marquee.internal.tatari.dev/p/~scott-idler/prd-claude-code-telemetry/) |
 | Rename take-up: old name vs new name invocations per week, until the stub is removed | n/a | telemetry |
-| PRDs: weekly readiness report's not-ready share | per report | [PRD Readiness Review](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2715713538/PRD+Readiness+Review+-+2026-10-02+1331) |
+| PRDs: non-compliant share in the n8n auditor's weekly PRD Readiness Review | 20 of 32 (2026-10-02) | [PRD Readiness Review, 2026-10-02](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2715713538/PRD+Readiness+Review+-+2026-10-02+1331) |
 | Specs: slipping epics citing spec or requirements | 6 of 25 | [SoS summary](https://tatari.atlassian.net/wiki/spaces/TPM1/pages/2671476841/SoS+Pre-Meeting+Summary+Sep+4+2026) |
 | PRs: org contract check fail rate on non-bot PRs (split by marker); review wait before and after `pr`; share tiered `mechanical` | 0 of 634 complete bodies | [`/pr:create` design](https://marquee.internal.tatari.dev/p/~scott-idler/pr-create-skill-hook-and-fleet-delivery/) |
 
@@ -732,7 +737,7 @@ The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster
 | [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101) exception, or an explicit path through the rule, for `mechanical` PRs | Security | open: Phase 7 step one |
 | Which shepherd parts fold into `pr` | shepherd's owner ([RAD-37887](https://tatari.atlassian.net/browse/RAD-37887)) | open: Phase 8 |
 | Each noun's default advocate subset | Phase 3 | open; the registry decides it |
-| Does `/prd:score` keep the Readiness Checker's 100-point total, or follow `/spec:score` (readiness line, no total)? | Phase 4 | open |
+| Does `/prd:score` keep the n8n auditor's 100-point total, or follow `/spec:score` (readiness line, no total)? | Phase 4 | open |
 | `panel` seeding from spec-lab | spec-lab's author, [AIF-76](https://tatari.atlassian.net/browse/AIF-76) owner | open: Phase 3 acceptance |
 | Guard delivery: managed settings or `plugins/pr` | guard spike | open |
 | `dp:dp-foundations` → `dp:foundations` | [@tatari-tv/data-platform](https://github.com/orgs/tatari-tv/teams/data-platform) | open: the `dp` rename |
@@ -846,8 +851,8 @@ The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster
     How we measure whether this worked.
   </Card>
 
-  <Card title="PRD Readiness Checker" icon="clipboard-check" href="https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/">
-    The seed of `/prd:score`.
+  <Card title="n8n PRD Readiness Auditor: scoring prompt" icon="clipboard-check" href="https://marquee.internal.tatari.dev/p/~scott-idler/prd-readiness-checker/">
+    The prompt behind the weekly PRD Readiness Review, and the seed of `/prd:score`.
   </Card>
 
   <Card title="AIF-76 epic post" icon="layer-group" href="https://marquee.internal.tatari.dev/p/~stephen/aif-76-marketplace-tiering-and-conductor-extraction/">
