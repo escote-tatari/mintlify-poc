@@ -15,7 +15,8 @@
         "pages": [
           "index",
           "quickstart",
-          "component-showcase"
+          "component-showcase",
+          "ease-challenger-plan"
         ]
       },
       "some-new-page",
@@ -24,7 +25,8 @@
         "pages": [
           "wiz-bang-feature"
         ]
-      }
+      },
+      "it-testing"
     ],
     "global": {
       "anchors": [
