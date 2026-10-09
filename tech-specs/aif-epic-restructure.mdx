@@ -230,7 +230,7 @@ Each goal comes with the assert that proves it (asserted 2026-10-06, or at the d
 | Out of scope | Why, or where it lives instead |
 | --- | --- |
 | **Telemetry** | How we measure adoption and the before-and-after is the [telemetry tech spec](https://marquee.internal.tatari.dev/p/~scott-idler/tech-spec-claude-code-telemetry/). |
-| **Changing SEC-3101** | This work asks Security for an exception; it does not route around the rule. |
+| **Changing [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101)** | This work asks Security for an exception; it does not route around the rule. |
 | **Agent auto-approval before that exception** | The tier routes reviewers only. |
 | **`/pr:create` and `/pr:revise` internals** | The [`/pr:create` design](https://marquee.internal.tatari.dev/p/~scott-idler/pr-create-skill-hook-and-fleet-delivery/) owns them; this spec places them in the contract. |
 | **Ring 0** | `prd` is a ring 0 candidate only when `prd` and `panel` both clear the ring 0 bar ([Rings §02](https://marquee.internal.tatari.dev/p/~scott-idler/rings-for-tatari-skills/)). |
@@ -250,7 +250,7 @@ Each goal comes with the assert that proves it (asserted 2026-10-06, or at the d
   <Card title="Dependencies" icon="diagram-project">
     **Upstream**
 
-    - Security: the SEC-3101 exception (Phase 7) and the guard's sidestep list (Phase 6).
+    - Security: the [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101) exception (Phase 7) and the guard's sidestep list (Phase 6).
     - shepherd's owner: which parts fold into `pr` ([RAD-37887](https://tatari.atlassian.net/browse/RAD-37887), Phase 8).
     - [github-required-workflows](https://github.com/tatari-tv/github-required-workflows) and org ruleset 126206 ([SEC-3101](https://tatari.atlassian.net/browse/SEC-3101)) for the org contract check.
     - [claude-enterprise-config](https://github.com/tatari-tv/claude-enterprise-config) for the guard's fleet delivery, if the guard spike picks managed settings.
@@ -324,6 +324,7 @@ flowchart TB
     PR -- "risk tier" --> ROUTE["reviewer routing<br/>(SEC-3101 permitting)"]
     classDef engine fill:#e0f2fe,stroke:#0369a1,color:#0c4a6e
     class PANEL engine
+    click ROUTE "https://tatari.atlassian.net/browse/SEC-3101" "SEC-3101" _blank
 ```
 
 <Note>
@@ -647,7 +648,7 @@ Each step is its own PR unless noted. This is the order the work is landing in.
 | A new skill | Revert its PR; the stub at the old name still points at the new one, so re-add the old skill in the same revert if a caller needs it. |
 | The guard | `PR_CREATE_ENFORCEMENT=off` in managed `env` (fleet) or user `env` (one person). |
 | The org check | Re-add `continue-on-error` (back to audit). |
-| Routing | The tier is advisory until SEC-3101's exception; removing `/pr:score` changes nothing about approval. |
+| Routing | The tier is advisory until [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101)'s exception; removing `/pr:score` changes nothing about approval. |
 
 ### Comms plan
 
@@ -697,21 +698,30 @@ flowchart TB
     classDef now fill:#fef3c7,stroke:#b45309,color:#78350f
     class P1 done
     class P2 now
+    click P1 "https://tatari.atlassian.net/browse/AIF-95" "AIF-95" _blank
+    click P2 "https://tatari.atlassian.net/browse/AIF-76" "AIF-76" _blank
+    click P3 "https://tatari.atlassian.net/browse/AIF-95" "AIF-95" _blank
+    click P4 "https://tatari.atlassian.net/browse/AIF-95" "AIF-95" _blank
+    click P5 "https://tatari.atlassian.net/browse/AIF-95" "AIF-95" _blank
+    click P6 "https://tatari.atlassian.net/browse/AIF-95" "AIF-95" _blank
+    click P7 "https://tatari.atlassian.net/browse/SEC-3101" "SEC-3101" _blank
+    click P8 "https://tatari.atlassian.net/browse/AIF-95" "AIF-95" _blank
+    click P9 "https://tatari.atlassian.net/browse/AIF-76" "AIF-76" _blank
 ```
 
 | Phase | Work | Epic | Exit evidence |
 | --- | --- | --- | --- |
 | 1 | Verb and advocate contract | [AIF-95](https://tatari.atlassian.net/browse/AIF-95) | CONTRIBUTING and Rings §03 match (**done** 2026-10-08) |
 | 2 | Audience field; renames with the stub exemption | [AIF-76](https://tatari.atlassian.net/browse/AIF-76) | `bin/skillzy validate` passes; audience field merged with `development` (**done** 2026-10-06); every rename merged with its stub |
-| 3 | `panel` engine with the advocate registry; `/prd:review`, `/spec:review` | AIF-95 | G2 asserts pass |
-| 4 | `prd` plugin and `spec:create` from conductor; `/prd:score` | AIF-95 | G3 asserts pass; evals green |
-| 5 | `/pr:create`, `/pr:revise`, body contract, risk tier, org check (audit) | AIF-95 | G4, G6 asserts pass |
-| 6 | Guard spike, then guard | AIF-95 | G5 asserts pass |
-| 7 | `/pr:score` routing; SEC-3101 exception | AIF-95 | exception recorded; tier precision measured on a labeled sample |
-| 8 | `/pr:watch` from shepherd | AIF-95 | moved and remaining shepherd capabilities recorded |
-| 9 | Conductor tombstones; evictions; dedups; evals required | AIF-76 | stubs at every old name; eval job required |
+| 3 | `panel` engine with the advocate registry; `/prd:review`, `/spec:review` | [AIF-95](https://tatari.atlassian.net/browse/AIF-95) | G2 asserts pass |
+| 4 | `prd` plugin and `spec:create` from conductor; `/prd:score` | [AIF-95](https://tatari.atlassian.net/browse/AIF-95) | G3 asserts pass; evals green |
+| 5 | `/pr:create`, `/pr:revise`, body contract, risk tier, org check (audit) | [AIF-95](https://tatari.atlassian.net/browse/AIF-95) | G4, G6 asserts pass |
+| 6 | Guard spike, then guard | [AIF-95](https://tatari.atlassian.net/browse/AIF-95) | G5 asserts pass |
+| 7 | `/pr:score` routing; [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101) exception | [AIF-95](https://tatari.atlassian.net/browse/AIF-95) | exception recorded; tier precision measured on a labeled sample |
+| 8 | `/pr:watch` from shepherd | [AIF-95](https://tatari.atlassian.net/browse/AIF-95) | moved and remaining shepherd capabilities recorded |
+| 9 | Conductor tombstones; evictions; dedups; evals required | [AIF-76](https://tatari.atlassian.net/browse/AIF-76) | stubs at every old name; eval job required |
 
-The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster, the `ctx` deletion) runs beside Phases 3 to 8 under AIF-76 ([epic post](https://marquee.internal.tatari.dev/p/~stephen/aif-76-marketplace-tiering-and-conductor-extraction/)); it does not block the bottleneck skills. The per-phase ticket map is in the [design doc](https://marquee.internal.tatari.dev/p/~scott-idler/aif-epic-restructure-rings-bottlenecks-and-telemetry/) (Tracking Status).
+The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster, the `ctx` deletion) runs beside Phases 3 to 8 under [AIF-76](https://tatari.atlassian.net/browse/AIF-76) ([epic post](https://marquee.internal.tatari.dev/p/~stephen/aif-76-marketplace-tiering-and-conductor-extraction/)); it does not block the bottleneck skills. The per-phase ticket map is in the [design doc](https://marquee.internal.tatari.dev/p/~scott-idler/aif-epic-restructure-rings-bottlenecks-and-telemetry/) (Tracking Status).
 
 ---
 
@@ -719,11 +729,11 @@ The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster
 
 | Question | Owner | Status |
 | --- | --- | --- |
-| SEC-3101 exception, or an explicit path through the rule, for `mechanical` PRs | Security | open: Phase 7 step one |
+| [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101) exception, or an explicit path through the rule, for `mechanical` PRs | Security | open: Phase 7 step one |
 | Which shepherd parts fold into `pr` | shepherd's owner ([RAD-37887](https://tatari.atlassian.net/browse/RAD-37887)) | open: Phase 8 |
 | Each noun's default advocate subset | Phase 3 | open; the registry decides it |
 | Does `/prd:score` keep the Readiness Checker's 100-point total, or follow `/spec:score` (readiness line, no total)? | Phase 4 | open |
-| `panel` seeding from spec-lab | spec-lab's author, AIF-76 owner | open: Phase 3 acceptance |
+| `panel` seeding from spec-lab | spec-lab's author, [AIF-76](https://tatari.atlassian.net/browse/AIF-76) owner | open: Phase 3 acceptance |
 | Guard delivery: managed settings or `plugins/pr` | guard spike | open |
 | `dp:dp-foundations` → `dp:foundations` | [@tatari-tv/data-platform](https://github.com/orgs/tatari-tv/teams/data-platform) | open: the `dp` rename |
 
@@ -755,7 +765,7 @@ The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster
 
 ## Future changes (out of scope)
 
-- **Agent approval of `mechanical` PRs**, once SEC-3101 has an exception. Intercom auto-approves 19% ([via the `/pr:create` design](https://marquee.internal.tatari.dev/p/~scott-idler/pr-create-skill-hook-and-fleet-delivery/)); [Cloudflare risk-tiers AI review](https://blog.cloudflare.com/ai-code-review/).
+- **Agent approval of `mechanical` PRs**, once [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101) has an exception. Intercom auto-approves 19% ([via the `/pr:create` design](https://marquee.internal.tatari.dev/p/~scott-idler/pr-create-skill-hook-and-fleet-delivery/)); [Cloudflare risk-tiers AI review](https://blog.cloudflare.com/ai-code-review/).
 - **`prd` in ring 0** when `prd` and `panel` clear the ring 0 bar.
 - **`jira` and `thoughts` nouns** as conductor extraction continues (Rings §03).
 - **An LLM judge over PR bodies** once there is a corpus of skill-written bodies.
@@ -771,7 +781,7 @@ The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster
     - ✅ Historical depth, data completeness, data latency: N/A.
     - ✅ Ownership of each dataset is clear: N/A; ticket owners read from Jira 2026-10-06.
     - ✅ Upstream dependencies identified ([Dependencies](#assumptions-and-dependencies)).
-    - ⬜ Access permissions confirmed: **the SEC-3101 exception is not granted.**
+    - ⬜ Access permissions confirmed: **the [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101) exception is not granted.**
   </Accordion>
 
   <Accordion title="System understanding: 4 of 4" icon="sitemap">
@@ -794,7 +804,7 @@ The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster
     - ✅ Temporal claims include dates.
     - ✅ The plan addresses a verified, observed problem: the three bottlenecks' audits.
     - ✅ Scope is limited to components directly affected; validation methodology is in Testing and Goals.
-    - ✅ Known edge cases included: SEC-3101, guard sidesteps, stale tiers, the stub exemption, callers in other repos, the S2 gap.
+    - ✅ Known edge cases included: [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101), guard sidesteps, stale tiers, the stub exemption, callers in other repos, the S2 gap.
   </Accordion>
 
   <Accordion title="AI-generated content: all pass" icon="robot">
@@ -804,10 +814,10 @@ The remaining Rings extraction (thoughts, jira, explain-pr, the research cluster
   </Accordion>
 
   <Accordion title="Completeness: 3 of 4" icon="list-check">
-    - ⬜ All stakeholder concerns addressed: **Security, shepherd's owner and the AIF-76 owner have not reviewed.**
+    - ⬜ All stakeholder concerns addressed: **Security, shepherd's owner and the [AIF-76](https://tatari.atlassian.net/browse/AIF-76) owner have not reviewed.**
     - ✅ Previous context included.
     - ✅ Links work and point to the correct resources (verified 2026-10-09).
-    - ✅ Inconvenient information is not omitted: SEC-3101 blocks auto-approval; `enforce_admins` is false; two design-doc edits (`revise`, the creation-time tier) postdate the review panel; the deck's slipping-epic causes are LLM-inferred; the first renames merged before the announcement the rename story requires; the first rollout draft had `panel` before the renames.
+    - ✅ Inconvenient information is not omitted: [SEC-3101](https://tatari.atlassian.net/browse/SEC-3101) blocks auto-approval; `enforce_admins` is false; two design-doc edits (`revise`, the creation-time tier) postdate the review panel; the deck's slipping-epic causes are LLM-inferred; the first renames merged before the announcement the rename story requires; the first rollout draft had `panel` before the renames.
   </Accordion>
 </AccordionGroup>
 
