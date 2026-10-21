@@ -1,10 +1,17 @@
 ---
-title: "Tech Spec: reflex"
-sidebarTitle: "reflex"
+title: "Tech Spec: sys1"
+sidebarTitle: "sys1"
 description: "An Okta-gated proxy to TypeSafe Jev: one org key server-side, the caller's Okta token as the credential, per-user caps and a record of every call."
 icon: "shield-halved"
 tag: "DRAFT"
-keywords: ["reflex", "jev", "typesafe", "okta", "proxy", "tech spec", "SRE"]
+keywords:
+  - "sys1"
+  - "jev"
+  - "typesafe"
+  - "okta"
+  - "proxy"
+  - "tech spec"
+  - "SRE"
 ---
 
 | | |
@@ -22,7 +29,7 @@ keywords: ["reflex", "jev", "typesafe", "okta", "proxy", "tech spec", "SRE"]
 | **Review date** | |
 
 <Info>
-  Design doc and implementation notes live in `tatari-tv/reflex` under `docs/design/`. [PR #2](https://github.com/tatari-tv/reflex/pull/2) holds the build.
+  Design doc and implementation notes live in `tatari-tv/sys1` under `docs/design/`. [PR #2](https://github.com/tatari-tv/sys1/pull/2) holds the build.
 </Info>
 
 ## Problem
@@ -38,13 +45,13 @@ keywords: ["reflex", "jev", "typesafe", "okta", "proxy", "tech spec", "SRE"]
 
 ### What
 
-Any Okta-authenticated employee calls Jev with their own Okta token, from the stock TypeSafe SDKs, the `reflex` CLI, or an MCP tool in Claude, and never sees the org key. The server pins the model, caps rate and daily spend per user, and keeps a record of every call under the caller's verified email, which they can read back and nobody else can.
+Any Okta-authenticated employee calls Jev with their own Okta token, from the stock TypeSafe SDKs, the `sys1` CLI, or an MCP tool in Claude, and never sees the org key. The server pins the model, caps rate and daily spend per user, and keeps a record of every call under the caller's verified email, which they can read back and nobody else can.
 
 ## Summary
 
-reflex is an axum service on EKS behind the shared Okta gateway. It holds Tatari's single TypeSafe key, verifies the caller's Okta token in the pod, swaps the bearer for the org key, and forwards to `api.typesafe.ai` with the wire contract unchanged. Policy lives in the server: model pin and allowlist, a per-user rate limit and daily spend cap in a DynamoDB ledger, one audit line per call to Loki, and both bodies in S3 under the caller's email.
+sys1 is an axum service on EKS behind the shared Okta gateway. It holds Tatari's single TypeSafe key, verifies the caller's Okta token in the pod, swaps the bearer for the org key, and forwards to `api.typesafe.ai` with the wire contract unchanged. Policy lives in the server: model pin and allowlist, a per-user rate limit and daily spend cap in a DynamoDB ledger, one audit line per call to Loki, and both bodies in S3 under the caller's email.
 
-`reflex` is the CLI (`login | token | ask | models | logs | mcp`), and `reflex mcp serve` is a stdio MCP server with the same three tools. The shape is classifier.dev's (an API in front of Jev, no key for the caller), gated by Okta, with limits and a record of our uses.
+`sys1` is the CLI (`login | token | ask | models | logs | mcp`), and `sys1 mcp serve` is a stdio MCP server with the same three tools. The shape is classifier.dev's (an API in front of Jev, no key for the caller), gated by Okta, with limits and a record of our uses.
 
 <Columns cols={2}>
   <Card title="Goals" icon="bullseye">
@@ -55,10 +62,10 @@ reflex is an axum service on EKS behind the shared Okta gateway. It holds Tatari
     - Every call leaves one audit line and one S3 object under the verified email; a caller can read their own and nobody else's.
   </Card>
   <Card title="Non-goals" icon="ban">
-    - A token vend (reflex never hands out the key), or part of valet.
+    - A token vend (sys1 never hands out the key), or part of valet.
     - classifier.dev's surface: labels API, LLM tier, chunking, scraping, non-Jev models.
-    - A new API shape. reflex adds no field to the TypeSafe request or response.
-    - A query layer over the bodies. `reflex logs` lists the S3 prefix.
+    - A new API shape. sys1 adds no field to the TypeSafe request or response.
+    - A query layer over the bodies. `sys1 logs` lists the S3 prefix.
   </Card>
 </Columns>
 
@@ -68,7 +75,7 @@ reflex is an axum service on EKS behind the shared Okta gateway. It holds Tatari
 - The `oauth2-ingress-gateway` passes a bearer-carrying request through and redirects a header-less one. The gateway-to-pod hop is mesh mTLS, as for valet and marquee.
 - Pod stdout goes to Loki with 1-year retention; Datadog collects no container logs on these clusters, so log alerts are Loki ruler rules.
 - The Backstage `s3` mixin gains a versioning toggle and a write-once access level (platform-templates PR in flight). The bucket waits on it.
-- TypeSafe's rate limit is per org. reflex does not change that; it makes a 429 attributable and bounds any one caller.
+- TypeSafe's rate limit is per org. sys1 does not change that; it makes a 429 attributable and bounds any one caller.
 
 ### Dependencies
 
@@ -78,7 +85,7 @@ reflex is an axum service on EKS behind the shared Okta gateway. It holds Tatari
 | `okta-auth`, `mcp-io`, `renew` | SRE | the fleet's CLI crates |
 | Okta `default` authorization server, audience `api://default` | IT / Security | the same login every fleet CLI uses |
 | TypeSafe API | vendor | upstream |
-| DynamoDB table `reflex-ledger` | platform-infra PR, valet's hand-written precedent | counters |
+| DynamoDB table `sys1-ledger` | platform-infra PR, valet's hand-written precedent | counters |
 | S3 bucket `bodies` | Backstage `s3` mixin plus the pending access-level parameter | bodies |
 | Standard mixins (irsa, ecr, external-secrets, eks-deployment, argocd, github-actions, release-settings, datadog) | SRE | deploy |
 
@@ -90,7 +97,7 @@ One org key, server-side. The caller's Okta token is the credential; the server 
 
 <CardGroup cols={2}>
   <Card title="1. Keep TypeSafe's wire contract" icon="plug">
-    The stock SDKs work with `base_url` pointed at reflex and the Okta token as the "API key". No reflex client library, nothing for callers to learn.
+    The stock SDKs work with `base_url` pointed at sys1 and the Okta token as the "API key". No sys1 client library, nothing for callers to learn.
   </Card>
   <Card title="2. Verify the token in the pod" icon="key">
     Not just at the gateway. The verified identity is the S3 key prefix, so authorization for reading bodies is the key itself; there is no way to name another user.
@@ -113,14 +120,14 @@ One org key, server-side. The caller's Okta token is the credential; the server 
 
 ```mermaid
 flowchart LR
-    sdk["TypeSafe SDK<br/>base_url = reflex"]
-    cli["reflex CLI / MCP"]
+    sdk["TypeSafe SDK<br/>base_url = sys1"]
+    cli["sys1 CLI / MCP"]
     okta["Okta"]
     subgraph eks["EKS"]
         gw["oauth2-ingress-gateway"]
-        srv["reflex-server<br/>2 replicas"]
+        srv["sys1-server<br/>2 replicas"]
     end
-    ddb[("DynamoDB<br/>reflex-ledger")]
+    ddb[("DynamoDB<br/>sys1-ledger")]
     s3[("S3 bodies<br/>email/yyyy/mm/dd/id.json")]
     loki["Loki"]
     dd["Datadog"]
@@ -143,7 +150,7 @@ Repo: a Cargo workspace copied from marquee (`core`, `contract`, `server`, `cli`
 ### Data model
 
 <AccordionGroup>
-  <Accordion title="DynamoDB: reflex-ledger" icon="database" defaultOpen>
+  <Accordion title="DynamoDB: sys1-ledger" defaultOpen icon="database">
     Partition key `pk`, TTL attribute, on-demand. Two key shapes: `rate#<email>#<minute>` holding a count, and `spend#<email>#<day>` holding input tokens. Items expire within two days. IAM: `UpdateItem` and `GetItem` on this table only.
   </Accordion>
   <Accordion title="S3: bodies bucket" icon="bucket" defaultOpen>
@@ -168,7 +175,7 @@ Repo: a Cargo workspace copied from marquee (`core`, `contract`, `server`, `cli`
 autonumber
 participant C as Caller (SDK / CLI)
 participant G as Okta gateway
-participant R as reflex-server
+participant R as sys1-server
 participant D as DynamoDB
 participant T as TypeSafe
 participant S as S3
@@ -186,7 +193,7 @@ T-->>R: answer (non-2xx passes through. 401 -> 502 upstream_unauthorized)
 R->>R: answered model == pinned? (no -> 502 model_rejected, body withheld)
 R->>D: ADD usage.input_tokens to spend#email#day
 Note over R,D: ADD fails after a billed answer -> response unchanged, spend_counted=false
-R-->>C: status + body, x-reflex-request-id
+R-->>C: status + body, x-sys1-request-id
 R->>R: emit audit line
 R-)S: put bodies (bounded queue, never changes the response)
     ```
@@ -199,7 +206,7 @@ R-)S: put bodies (bounded queue, never changes the response)
     ```mermaid
     sequenceDiagram
 participant C as Caller
-participant R as reflex-server
+participant R as sys1-server
 participant S as S3
 C->>R: GET /logs/<id>, Okta bearer
 R->>R: verify JWT, then key = verified email + date from the UUIDv7 id
@@ -214,7 +221,7 @@ R-->>C: 200 body, or 404 (another user's id looks the same)
     ```mermaid
     sequenceDiagram
 participant K as Kubernetes
-participant R as reflex-server
+participant R as sys1-server
 participant S as S3
 K->>R: SIGTERM (pod leaves the Service)
 Note over R: keep accepting 3 s while the gateway catches up
@@ -249,23 +256,23 @@ Errors use TypeSafe's own `{"detail": {"error_type", "message"}}` shape, so the 
     The whole integration for an existing script:
 
     ```bash
-    export TYPESAFE_BASE_URL=https://reflex.internal.tatari.dev
-    export TYPESAFE_API_KEY=$(reflex token)
+    export TYPESAFE_BASE_URL=https://sys1.internal.tatari.dev
+    export TYPESAFE_API_KEY=$(sys1 token)
     python my_existing_jev_script.py   # unchanged
     ```
   </Tab>
   <Tab title="CLI">
-    `reflex login | logout | whoami | token | renew | ask | models | logs | mcp`. Yaml on a terminal, json when piped.
+    `sys1 login | logout | whoami | token | renew | ask | models | logs | mcp`. Yaml on a terminal, json when piped.
 
     ```bash
-    reflex login
-    reflex ask --questions questions.yml --state "the text to judge"
-    reflex logs --date 2026-10-19
-    reflex logs <request-id>
+    sys1 login
+    sys1 ask --questions questions.yml --state "the text to judge"
+    sys1 logs --date 2026-10-19
+    sys1 logs <request-id>
     ```
   </Tab>
   <Tab title="MCP">
-    `reflex mcp serve` (stdio) exposes `ask | models | logs`, the same functions as the CLI; `plugin/` ships the Claude skills through tatari-skills.
+    `sys1 mcp serve` (stdio) exposes `ask | models | logs`, the same functions as the CLI; `plugin/` ships the Claude skills through tatari-skills.
   </Tab>
 </Tabs>
 
@@ -277,7 +284,7 @@ Errors use TypeSafe's own `{"detail": {"error_type", "message"}}` shape, so the 
 
 ## Testing
 
-Unit and integration suites per crate; trait contract suites run against in-memory fakes and the AWS implementations (the live runs wait for the test bucket and table); every phase's tests were seen failing before the fix; a workspace mutation run reports zero missed. Nothing is deployed yet, so end to end is Phase 9: SDK calls, a rate trip and a cap trip across both pods, `reflex logs`, an alert tripped on purpose, and `sdv probe`.
+Unit and integration suites per crate; trait contract suites run against in-memory fakes and the AWS implementations (the live runs wait for the test bucket and table); every phase's tests were seen failing before the fix; a workspace mutation run reports zero missed. Nothing is deployed yet, so end to end is Phase 9: SDK calls, a rate trip and a cap trip across both pods, `sys1 logs`, an alert tripped on purpose, and `sdv probe`.
 
 ## Monitoring and observability
 
@@ -288,7 +295,7 @@ Unit and integration suites per crate; trait contract suites run against in-memo
 
 ## Scale and performance
 
-Low and unmeasured: a handful of callers, mostly the author's tag classifier. Jev answers in 70-500 ms; reflex adds a local verify, three DynamoDB calls, and an async S3 put. Bounds: 16 in flight per pod, two pods, 32 MiB each way, 2Gi per pod (sized from the bounds; peak RSS measured on test before the prod tag).
+Low and unmeasured: a handful of callers, mostly the author's tag classifier. Jev answers in 70-500 ms; sys1 adds a local verify, three DynamoDB calls, and an async S3 put. Bounds: 16 in flight per pod, two pods, 32 MiB each way, 2Gi per pod (sized from the bounds; peak RSS measured on test before the prod tag).
 
 ## Reliability and resilience
 
@@ -319,7 +326,7 @@ Two replicas with preferred anti-affinity and a PodDisruptionBudget (`minAvailab
     The author, then the engineers who asked for Jev, after a week of prod traffic with no rollback trigger.
   </Step>
   <Step title="Rollback" icon="rotate-left">
-    The previous tag. Triggers: `/ready` failing, any `internal` decision, uncounted billed calls with a healthy ledger, a reflex-owned 5xx rate the previous version did not show. `upstream_unauthorized` is not a rollback trigger: the fix is the key.
+    The previous tag. Triggers: `/ready` failing, any `internal` decision, uncounted billed calls with a healthy ledger, a sys1-owned 5xx rate the previous version did not show. `upstream_unauthorized` is not a rollback trigger: the fix is the key.
   </Step>
   <Step title="Key rotation" icon="key">
     New value in Secrets Manager, External Secrets syncs, `rollout restart`.
@@ -332,7 +339,7 @@ Negligible at the known workload. Two pods per environment on shared nodes; Dyna
 
 ## Security and privacy
 
-reflex is the answer to the three gaps SEC-3102 accepted: no SSO, no SCIM, no audit log.
+sys1 is the answer to the three gaps SEC-3102 accepted: no SSO, no SCIM, no audit log.
 
 - **Authentication:** the Okta token is verified in the pod (signature, issuer, audience, expiry); identity is the verified `sub`, never a header or field. Machine tokens are refused. Offboarding bound is the 12 h token lifetime, the same as valet.
 - **Authorization:** reading bodies is bounded by the S3 key built from the verified email. An admin reads another user's bodies only with a reason recorded in an ITHELP ticket; nothing standing, no admin view.
@@ -340,7 +347,7 @@ reflex is the answer to the three gaps SEC-3102 accepted: no SSO, no SCIM, no au
 - **Data:** stored bodies are **Internal Use** (Data Classification Policy). A Jev call is a classifier call; the only free text is the work data being classified. Restricted and Confidential data does not go to Jev, the bar SEC-3117 set. Controls met: TLS and mesh mTLS in transit, SSE at rest, 365-day expiry, access on a stated reason only. The vendor's zero data retention is about their side; keeping our own record is a decided item.
 - **Least privilege:** two DynamoDB actions on one table, three S3 actions on one bucket, no delete anywhere.
 - **Attack surface:** fixed upstream URL (no SSRF); identity cannot carry a path separator and `/logs` inputs are validated to one spelling (no injection); body caps, in-flight bound, bounded queue, and timeouts (no exhaustion); `TypeSafe-Danger-Zone-*` headers refused (no vendor preview escape); the audit field list is asserted by test (no secrets in logs).
-- **Compliance:** SOC 2 scope unchanged; no GDPR/CCPA subject data by design. Full TSR requested: Security and SRE tickets titled `Tech Spec review: reflex`.
+- **Compliance:** SOC 2 scope unchanged; no GDPR/CCPA subject data by design. Full TSR requested: Security and SRE tickets titled `Tech Spec review: sys1`.
 
 <Warning>
   **Accepted risk, audience.** `api://default` is shared with every fleet CLI, so another Tatari service holding a user's token could replay it as that user. Accepted: valet and marquee carry the same exposure, and a replayed call is capped and recorded under that user.
@@ -350,7 +357,7 @@ reflex is the answer to the three gaps SEC-3102 accepted: no SSO, no SCIM, no au
 
 <Steps>
   <Step title="Phases 0-7: built" icon="check">
-    Probe, workspace, proxy, audit and store, ledger, CLI and MCP, `/logs` and plugin, verifier. On [PR #2](https://github.com/tatari-tv/reflex/pull/2) with the audit and review folds.
+    Probe, workspace, proxy, audit and store, ledger, CLI and MCP, `/logs` and plugin, verifier. On [PR #2](https://github.com/tatari-tv/sys1/pull/2) with the audit and review folds.
   </Step>
   <Step title="Phase 8: infra and the test deploy" icon="server">
     Mixins, the hand-written ledger table, alerts, PDB. IT mints the key.
@@ -383,11 +390,11 @@ Images, `box`, and long context (when the vendor stops calling them jagged); mac
 | Org key on every laptop (env, keychain, MDM) | the master key on N laptops; no limits, no record; rotation touches every machine |
 | OIDC token exchange at the vendor | not offered |
 | Vend a credential through valet | TypeSafe has no per-user identity to mint against; the call never passes through a service we run |
-| Gateway or mesh rate limiting in front of a thin forwarder | spend needs the response's `usage`, the pin needs the response's `model`, the record needs both bodies; the forwarder grows into reflex |
-| A general LLM gateway or Envoy ext-auth | models chat-completion APIs; Jev's endpoint is not one, so the three things reflex does would each be a plugin we write |
+| Gateway or mesh rate limiting in front of a thin forwarder | spend needs the response's `usage`, the pin needs the response's `model`, the record needs both bodies; the forwarder grows into sys1 |
+| A general LLM gateway or Envoy ext-auth | models chat-completion APIs; Jev's endpoint is not one, so the three things sys1 does would each be a plugin we write |
 | classifier.dev | public, keyless, retains content for training by default, may answer with non-Jev models, no Tatari vendor review |
 | In-memory counters | every limit silently doubles at two replicas |
-| ElastiCache for the counters | the cap fails closed, so counter-store downtime is reflex downtime; the fleet's single-node shape sits under a 99.5% SLA against DynamoDB's 99.99% with no maintenance window; the latency gain is invisible beside Jev |
+| ElastiCache for the counters | the cap fails closed, so counter-store downtime is sys1 downtime; the fleet's single-node shape sits under a 99.5% SLA against DynamoDB's 99.99% with no maintenance window; the latency gain is invisible beside Jev |
 | CloudWatch Logs plus Athena for bodies | not in the fleet; a 32 MiB body does not fit a log event |
 | Okta introspection per call | an Okta call per request to cut offboarding from 12 h to seconds; valet accepts 12 h |
 
@@ -395,18 +402,18 @@ Images, `box`, and long context (when the vendor stops calling them jagged); mac
 
 <AccordionGroup>
   <Accordion title="References" icon="link">
-    - Design doc and implementation notes: `tatari-tv/reflex` `docs/design/2026-10-18-reflex.md`, `docs/design/2026-10-18-reflex-implementation-notes.md`
-    - PR #2: https://github.com/tatari-tv/reflex/pull/2
+    - Design doc and implementation notes: `tatari-tv/sys1` `docs/design/2026-10-18-sys1.md`, `docs/design/2026-10-18-sys1-implementation-notes.md`
+    - PR #2: [https://github.com/tatari-tv/sys1/pull/2](https://github.com/tatari-tv/sys1/pull/2)
     - Jira: AIF-118, SEC-3117, SEC-3102, ITHELP-5682, ITHELP-5699, AIF-28
     - Jev field guide: marquee post `eng/typesafe-jev`; TypeSafe docs: https://docs.typesafe.ai/api.md
     - Fleet precedents: valet `docs/design/2026-07-02-valet.md`; marquee; `okta-verify-rs` `docs/design/2026-10-18-okta-verify.md`
     - Policies: [Data Classification Policy](https://tatari.atlassian.net/wiki/spaces/SEC/pages/989888557), Data Retention Policy
     - Process: [Engineering Tech Specs](https://tatari.atlassian.net/wiki/spaces/ENG/pages/1673199755); [SRE Tech Spec Review Process](https://tatari.atlassian.net/wiki/spaces/SRE/pages/2721611797)
-    - Prior art: https://classifier.dev, `github.com/alvarobartt/sys1`
+    - Prior art: [https://classifier.dev](https://classifier.dev), `github.com/alvarobartt/sys1` (an unrelated project that shares the name)
   </Accordion>
   <Accordion title="Glossary" icon="book">
     - **Jev**: TypeSafe's System One decision model; pinned versions `jev-1.13.0` and `jev-1.14.0`, moving aliases `jev-latest` and `jev-preview`.
-    - **System One**: TypeSafe's name for the family: fast, automatic, no deliberation. Hence `reflex`.
+    - **System One**: TypeSafe's name for the family: fast, automatic, no deliberation. Hence `sys1`.
     - **JWKS**: JSON Web Key Set, Okta's published signing keys; cached in the pod.
     - **IRSA**: IAM Roles for Service Accounts; the pod's AWS permissions without a key.
     - **UUIDv7**: time-ordered UUID; the request id, whose timestamp gives the S3 key date.
