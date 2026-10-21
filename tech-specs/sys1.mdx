@@ -14,7 +14,7 @@ keywords:
   - "SRE"
 ---
 
-| | |
+|  |  |
 | --- | --- |
 | **Author** | Scott Idler |
 | **Date** | 2026-10-19 |
@@ -26,7 +26,7 @@ keywords:
 | **Jira Epic** | [AIF-118](https://tatari.atlassian.net/browse/AIF-118) |
 | **Approvers** | Security (SEC-####), SRE (SRE-####) |
 | **Stakeholders** | IT (TypeSafe console admin, mints the one key). AI Foundry (AIF-28). Engineers writing skills and scripts that call Jev. |
-| **Review date** | |
+| **Review date** |  |
 
 <Info>
   Design doc and implementation notes live in `tatari-tv/sys1` under `docs/design/`. [PR #2](https://github.com/tatari-tv/sys1/pull/2) holds the build.
@@ -61,6 +61,7 @@ sys1 is an axum service on EKS behind the shared Okta gateway. It holds Tatari's
     - Per-user rate and spend caps hold exactly across two replicas.
     - Every call leaves one audit line and one S3 object under the verified email; a caller can read their own and nobody else's.
   </Card>
+
   <Card title="Non-goals" icon="ban">
     - A token vend (sys1 never hands out the key), or part of valet.
     - classifier.dev's surface: labels API, LLM tier, chunking, scraping, non-Jev models.
@@ -99,18 +100,23 @@ One org key, server-side. The caller's Okta token is the credential; the server 
   <Card title="1. Keep TypeSafe's wire contract" icon="plug">
     The stock SDKs work with `base_url` pointed at sys1 and the Okta token as the "API key". No sys1 client library, nothing for callers to learn.
   </Card>
+
   <Card title="2. Verify the token in the pod" icon="key">
     Not just at the gateway. The verified identity is the S3 key prefix, so authorization for reading bodies is the key itself; there is no way to name another user.
   </Card>
+
   <Card title="3. Counters in DynamoDB" icon="calculator">
     Two replicas must agree on a limit. Atomic `ADD` with TTL, admission before forwarding, fail closed when the ledger is down, undercount rather than double-bill when it fails after the answer.
   </Card>
+
   <Card title="4. Bodies in S3, metadata in Loki" icon="box-archive">
     A body can be 32 MiB and does not belong in a log pipeline. S3 lifecycle is the retention control Security already understands. The pod can put, get, and list; never delete.
   </Card>
+
   <Card title="5. Model policy in the response path too" icon="shield-check">
     The pin rewrites the request; the check on the answered `model` catches the vendor moving under us. Spend comes from the response's `usage`, so a gateway rate limiter could never do this job.
   </Card>
+
   <Card title="6. Zero-drop rollouts" icon="rotate">
     One shutdown window, validated at startup to cover the slowest call, under the pod's 30 s grace.
   </Card>
@@ -153,14 +159,17 @@ Repo: a Cargo workspace copied from marquee (`core`, `contract`, `server`, `cli`
   <Accordion title="DynamoDB: sys1-ledger" defaultOpen icon="database">
     Partition key `pk`, TTL attribute, on-demand. Two key shapes: `rate#<email>#<minute>` holding a count, and `spend#<email>#<day>` holding input tokens. Items expire within two days. IAM: `UpdateItem` and `GetItem` on this table only.
   </Accordion>
-  <Accordion title="S3: bodies bucket" icon="bucket" defaultOpen>
+
+  <Accordion title="S3: bodies bucket" defaultOpen icon="bucket">
     One object per call that passed the identity gate, keyed `<email>/<yyyy>/<mm>/<dd>/<request_id>.json`. The request id is a UUIDv7, so the date comes from the id and a read rebuilds the key from the id plus the verified email. The object holds the metadata (ids, models, statuses, usage, cost, decision) and both bodies. Private, SSE-S3, 365-day expiry (Data Retention Policy, pod-log row), versioned with a 1-day noncurrent expiry. IAM: put, get, list; no delete.
   </Accordion>
+
   <Accordion title="Audit line" icon="file-lines">
     One JSON line per call to stdout, the same metadata as the object, never a body or token. `decision` is one word for how the call ended and equals the error body's `error_type`: `ok`, a refusal (`unauthorized`, `rate_limited`, `cap_exceeded`, `bad_request`, ...), an upstream outcome (`upstream_rejected`, `upstream_unauthorized`, `upstream_error`, `model_rejected`), or a dependency failure (`ledger_unavailable`, `identity_unavailable`, `store_unavailable`, `shed`).
   </Accordion>
+
   <Accordion title="Config" icon="sliders">
-    Env only, validated at startup. Defaults: 120 calls/min, $5.00/day, model pin `jev-1.13.0` with `jev-1.14.0` allowed, 32 MiB body cap, 12 s upstream timeout, 16 in flight per pod, 25 s shutdown window.
+    Env only, validated at startup. Defaults: 120 calls/min, \$5.00/day, model pin `jev-1.13.0` with `jev-1.14.0` allowed, 32 MiB body cap, 12 s upstream timeout, 16 in flight per pod, 25 s shutdown window.
   </Accordion>
 </AccordionGroup>
 
@@ -405,12 +414,13 @@ Images, `box`, and long context (when the vendor stops calling them jagged); mac
     - Design doc and implementation notes: `tatari-tv/sys1` `docs/design/2026-10-18-sys1.md`, `docs/design/2026-10-18-sys1-implementation-notes.md`
     - PR #2: [https://github.com/tatari-tv/sys1/pull/2](https://github.com/tatari-tv/sys1/pull/2)
     - Jira: AIF-118, SEC-3117, SEC-3102, ITHELP-5682, ITHELP-5699, AIF-28
-    - Jev field guide: marquee post `eng/typesafe-jev`; TypeSafe docs: https://docs.typesafe.ai/api.md
+    - Jev field guide: marquee post `eng/typesafe-jev`; TypeSafe docs: [https://docs.typesafe.ai/api.md](https://docs.typesafe.ai/api.md)
     - Fleet precedents: valet `docs/design/2026-07-02-valet.md`; marquee; `okta-verify-rs` `docs/design/2026-10-18-okta-verify.md`
     - Policies: [Data Classification Policy](https://tatari.atlassian.net/wiki/spaces/SEC/pages/989888557), Data Retention Policy
     - Process: [Engineering Tech Specs](https://tatari.atlassian.net/wiki/spaces/ENG/pages/1673199755); [SRE Tech Spec Review Process](https://tatari.atlassian.net/wiki/spaces/SRE/pages/2721611797)
     - Prior art: [https://classifier.dev](https://classifier.dev), `github.com/alvarobartt/sys1` (an unrelated project that shares the name)
   </Accordion>
+
   <Accordion title="Glossary" icon="book">
     - **Jev**: TypeSafe's System One decision model; pinned versions `jev-1.13.0` and `jev-1.14.0`, moving aliases `jev-latest` and `jev-preview`.
     - **System One**: TypeSafe's name for the family: fast, automatic, no deliberation. Hence `sys1`.

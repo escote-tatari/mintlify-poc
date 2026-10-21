@@ -29,7 +29,7 @@
         "group": "Tech Specs",
         "icon": "file-signature",
         "pages": [
-          "tech-specs/reflex"
+          "tech-specs/sys1"
         ]
       }
     ],
@@ -83,5 +83,12 @@
       "github": "https://github.com/mintlify",
       "linkedin": "https://linkedin.com/company/mintlify"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/tech-specs/reflex",
+      "destination": "/tech-specs/sys1",
+      "permanent": true
+    }
+  ]
 }
